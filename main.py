@@ -19,14 +19,28 @@ def demodulacao(m_t, fs, t):
 
 
 
+
+
 def retificacao(r_t):
     return np.abs(r_t)
 
 def low-pass-filter()
 
-
+(0, 0.1, 0.2)
 
 if __name__ == '__main__':
+    portadora, mensagem, fc, fs, t = np.zeros()
 
     portadora = gerar_portadora(fc, fs, t)
+    # n_samples = len(mensagem)
+    # fs = 48000
+    # t = np.arange(0, n_samples, 1/fs)
+    #
+    # mensagem = mensagem.wav
+
+    m_t = modulacao(portadora, mensagem, fs, t)
+
+    s_t = demodulacao(m_t, fs, t)
+    
+    gerar_graficos(portadora, mensagem, m_t, s_t)
     
