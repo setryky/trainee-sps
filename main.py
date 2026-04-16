@@ -18,12 +18,21 @@ def demodulacao(m_t, fs, t):
     return s_t
 
 
+
 def retificacao(r_t):
     return np.abs(r_t)
 
 def low-pass-filter(m_t_hat)
     
     return s_t
+
+def gerar_graficos(portadora, mensagem, m_t, s_t):
+
+    return
+
+
+
+
 
 if __name__ == '__main__':
     portadora, mensagem, fc, fs, t = np.zeros()
