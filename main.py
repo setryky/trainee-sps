@@ -40,6 +40,8 @@ def dc_removal_gain(s_t):
 
 def gerar_graficos(portadora, mensagem, m_t, s_t):
 
+    # implementar função do gráfico
+
     return
 
 
