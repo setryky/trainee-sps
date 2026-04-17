@@ -4,14 +4,14 @@ import matplotlib.pyplot as plt
 
 def gerar_portadora(fc, t):
 
-    portadora = np.cos(2 * np.pi * fc * t) #Gera portadora cossenoidal
+    portadora = np.cos(2 * np.pi * fc * t) #Gera portadora cossenoidal.
 
     return portadora
 
 def modulacao(portadora, mensagem, t):
 
-    A = 1.0  # Amplitude da portadora (DC Offset)
-    m_t = (A * mensagem) * portadora
+    A = 1.0  # Amplitude da portadora (DC Offset).
+    m_t = (A * mensagem) * portadora #Mixing da mensagem com a portadora, gerando o sinal modulado.
     
     return m_t
 
@@ -22,13 +22,14 @@ def demodulacao(m_t, t):
 
     return s_t
 
-
-
 def retificacao(r_t):
-    return np.abs(r_t)
+    return np.abs(r_t) #Retificação de onda completa, obtendo o valor absoluto do sinal modulado. É como se fosse uma ponte retificadora, ao invés de apenas um diodo. 
 
-def low-pass-filter(m_t_hat)
-    
+def low-pass-filter(m_t_hat):
+
+    windows_size = 50
+    kernel = np.ones(windows_size) / windows_size    
+    s_t = np.convolve(m_t_hat, kernel, mode="same") #Filtragem do sinal retificado usando uma média móvel (filtro FIR simples) para recuperar a mensagem original.
     return s_t
 
 def gerar_graficos(portadora, mensagem, m_t, s_t):
