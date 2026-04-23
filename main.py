@@ -12,10 +12,11 @@ def gerar_portadora(fc, fs_simulacao, n_amostras):
 
 def modulacao(portadora, mensagem):
 
-    A = 33000  # Amplitude da portadora (DC Offset) com valor inteiro (porque a mensagem está em int32).
-    mu = 0.8
+    A = 33000  # Amplitude da portadora (DC Offset) com valor inteiro (porque a mensagem está em int16).
+    # A mensagem varia de -32768 a 32767, então precisamos de uma portadora na mesma escala.
+    mu = 0.8    # usando um coeficiente de submodulação (mu < 1)
     m_t = (A + mu * mensagem) * portadora # Mixing da mensagem com a portadora, gerando o sinal modulado.
-    
+    # TODO - alterar a documentação. Estamos usando uma modulação AM-convencional, não o DSB-SC (que exigiria demodulação coerente)
     return m_t
 
 def demodulacao(m_t, K):
