@@ -22,22 +22,20 @@ def lowpass_filter(x, K):
 
 
 def filtro_fase_linear(fs, fc, numtaps=101):
-    # 1. Preparar o vetor de tempo centrado (para simetria/fase linear)
     M = (numtaps - 1) / 2
     n = np.arange(numtaps) - M
 
-    # 2. Resposta ao impulso ideal (Dedução da Sinc)
     f_n = fc / fs
+    # TODO - demonstrar a implementação do filtro ideal com a SINC
     h_sinc = 2 * f_n * np.sinc(2 * f_n * n)
 
-    # 3. Importar a janela (usando NumPy para manter a consistência)
-    # A Hamming suaviza o erro de truncamento da sinc
+    # Explicar o janelamento de Hamming
     window = np.hamming(numtaps)
 
-    # 4. Aplicação da janela e normalização
+    # Aplicação da janela e normalização
     h_final = h_sinc * window
     h_final /= np.sum(h_final)  # Garante que o ganho em 0Hz seja 1 (0dB)
-
+    print(h_final)
     return h_final
 
 
@@ -63,6 +61,9 @@ if __name__ == "__main__":
     # print("phase= ", phase)
 
     h_final = filtro_fase_linear(fs, fc, 101)
+    n = np.arange(len(h_final))
+    plt.plot(n, h_final)
+    plt.show()
 
     w, h = signal.freqz(h_final, worN=8000)
     freq_hz = w * fs / (2 * np.pi)

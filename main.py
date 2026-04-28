@@ -50,19 +50,14 @@ def retificacao(r_t):
 
 
 def filtro_fase_linear(signal, fs, fc, numtaps=101):
-    # 1. Preparar o vetor de tempo centrado (para simetria/fase linear)
     M = (numtaps - 1) / 2
     n = np.arange(numtaps) - M
 
-    # 2. Resposta ao impulso ideal (Dedução da Sinc)
     f_n = fc / fs
     h_sinc = 2 * f_n * np.sinc(2 * f_n * n)
 
-    # 3. Importar a janela (usando NumPy para manter a consistência)
-    # A Hamming suaviza o erro de truncamento da sinc
     window = np.hamming(numtaps)
 
-    # 4. Aplicação da janela e normalização
     h_final = h_sinc * window
     h_final /= np.sum(h_final)  # Garante que o ganho em 0Hz seja 1 (0dB)
 
