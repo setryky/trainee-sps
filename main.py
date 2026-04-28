@@ -24,9 +24,11 @@ def modulacao(portadora, mensagem):
     return m_t
 
 
-def demodulacao(m_t, K):
+# def demodulacao(m_t, K):
+def demodulacao(m_t, fs, f_corte=15000):
     s_t = retificacao(m_t)
-    s_t = lowpass_filter(s_t, K)
+    # s_t = lowpass_filter(s_t, K)
+    s_t = filtro_fase_linear(s_t, fs, f_corte, 101)
     s_t = removedor_DC(s_t)
 
     return s_t
@@ -45,6 +47,28 @@ def retificacao(r_t):
 #     s_t = np.convolve(m_t_hat, kernel, mode="same") # Filtragem do sinal retificado usando uma média móvel (filtro FIR simples) para recuperar a mensagem original.
 #     return s_t
 #
+
+
+def filtro_fase_linear(signal, fs, fc, numtaps=101):
+    # 1. Preparar o vetor de tempo centrado (para simetria/fase linear)
+    M = (numtaps - 1) / 2
+    n = np.arange(numtaps) - M
+
+    # 2. Resposta ao impulso ideal (Dedução da Sinc)
+    f_n = fc / fs
+    h_sinc = 2 * f_n * np.sinc(2 * f_n * n)
+
+    # 3. Importar a janela (usando NumPy para manter a consistência)
+    # A Hamming suaviza o erro de truncamento da sinc
+    window = np.hamming(numtaps)
+
+    # 4. Aplicação da janela e normalização
+    h_final = h_sinc * window
+    h_final /= np.sum(h_final)  # Garante que o ganho em 0Hz seja 1 (0dB)
+
+    y = np.convolve(signal, h_final, mode="same")
+
+    return y
 
 
 def lowpass_filter(x, K):
@@ -144,10 +168,13 @@ def salvar_audio(audio, fs_simulacao, fs):
 
 if __name__ == "__main__":
     fc = 150000  # 150 kHz
+    f_corte = 15000  # 15 kHz
     fs_simulacao = 1000000  # 1 MHz
     # queremos uma frequência de simulação alta o suficiente para "ver" a portadora.
     arquivo = "audio.wav"
-    n_amostras, fs, mensagem = extrair_mensagem(arquivo, fs_simulacao)
+
+    n_amostras, fs_audio, mensagem = extrair_mensagem(arquivo, fs_simulacao)
+
     portadora = gerar_portadora(fc, fs_simulacao, n_amostras)
 
     T = 1 / fs_simulacao
@@ -158,10 +185,11 @@ if __name__ == "__main__":
     # Esses valores de capacitância, resistência resultam em um filtro
     # com frequência de corte de aproximadamente 15 kHz
 
-    m_t = modulacao(portadora, mensagem)
+    mensagem_modulada = modulacao(portadora, mensagem)
 
-    s_t = demodulacao(m_t, K)
+    # mensagem_demodulada = demodulacao(mensagem_modulada, K)
+    mensagem_demodulada = demodulacao(mensagem_modulada, fs_simulacao, f_corte)
 
-    salvar_audio(s_t, fs_simulacao, fs)
+    salvar_audio(mensagem_demodulada, fs_simulacao, fs_audio)
 
-    gerar_graficos(portadora, mensagem, m_t, s_t)
+    gerar_graficos(portadora, mensagem, mensagem_modulada, mensagem_demodulada)
