@@ -28,7 +28,7 @@ def modulacao(portadora, mensagem):
 def demodulacao(m_t, fs, f_corte=15000):
     s_t = retificacao(m_t)
     # s_t = lowpass_filter(s_t, K)
-    s_t = filtro_fase_linear(s_t, fs, f_corte, 101)
+    s_t = filtro_fase_linear(s_t, fs, f_corte, 301)
     s_t = removedor_DC(s_t)
 
     return s_t
@@ -95,11 +95,13 @@ def gerar_graficos(portadora, mensagem, m_t, s_t):
     # --- Plotagem ---
     fig, axs = plt.subplots(4, 1, figsize=(10, 10), sharex=True)
     plt.subplots_adjust(hspace=0.4)
+
     n = np.arange(len(mensagem))
     # Gráfico 1: Audio original
 
     axs[0].plot(n, mensagem, color="blue")
     axs[0].set_title("1. Audio Original")
+    axs[0].set_ylim(-40000, 40000)
     axs[0].grid(True)
 
     # Gráfico 2: Portadora
@@ -108,15 +110,18 @@ def gerar_graficos(portadora, mensagem, m_t, s_t):
 
     axs[1].plot(n, m_t, color="orange")
     axs[1].set_title("2. Sinal modulado")
+    # axs[1].set_ylim(-40000, 40000)
     axs[1].grid(True)
 
     # Gráfico 3:
     axs[2].plot(n, s_t, color="green")
     axs[2].set_title("3. Sinal demodulado")
+    axs[2].set_ylim(-40000, 40000)
     axs[2].grid(True)
 
     axs[3].plot(n, mensagem - s_t, color="orange")
     axs[3].set_title("4. Diferença entre o sinal original, e o demodulado")
+    axs[3].set_ylim(-40000, 40000)
     axs[3].grid(True)
 
     # plt.xlabel("Tempo (s)")

@@ -32,9 +32,15 @@ def filtro_fase_linear(fs, fc, numtaps=101):
     # Explicar o janelamento de Hamming
     window = np.hamming(numtaps)
 
+    plt.plot(n, window)
+    plt.show()
+
     # Aplicação da janela e normalização
     h_final = h_sinc * window
     h_final /= np.sum(h_final)  # Garante que o ganho em 0Hz seja 1 (0dB)
+
+    plt.plot(n, h_final)
+    plt.show()
     print(h_final)
     return h_final
 
@@ -42,7 +48,7 @@ def filtro_fase_linear(fs, fc, numtaps=101):
 if __name__ == "__main__":
     fs = 1_000_000  # 1 MHz
     fc = 15_000  # 15 kHz
-
+    # fn = fc/fs
     # T = 1 / fs
     # RC = 1 / (2 * np.pi * fc)
     #
@@ -60,7 +66,8 @@ if __name__ == "__main__":
     # print("mag= ", mag)
     # print("phase= ", phase)
 
-    h_final = filtro_fase_linear(fs, fc, 101)
+    # h_final = lowpass_filter(fs, fc, 101)
+    h_final = filtro_fase_linear(fs, fc, 301)
     n = np.arange(len(h_final))
     plt.plot(n, h_final)
     plt.show()
