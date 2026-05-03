@@ -17,6 +17,12 @@ def filtro_fase_linear(fs, fc, numtaps=101):
     return h_final
 
 
+# def low_pass_filter(m_t_hat):
+#     windows_size = 50
+#     kernel = np.ones(windows_size) / windows_size
+#     s_t = np.convolve(m_t_hat, kernel, mode="same")
+#     return s_t
+
 if __name__ == "__main__":
     fs = 1_000_000  # 1 MHz
     fc = 15_000  # 15 kHz

@@ -5,6 +5,28 @@ from scipy import signal
 # from filtro.py import filtro_fase_linear
 
 
+def extrair_mensagem(arquivo, fs_simulacao):
+    fs, audio = wavfile.read(arquivo)  # abre o arquivo e o salva em formato uint16
+    # para simplificar, vamos usar o audio MONO
+    if (
+        audio.ndim > 1
+    ):  # se for stereo, converte para mono calculando a média entre os canais
+        audio = audio.mean(axis=1).astype(audio.dtype)
+    # é necessário que a mensagem e a portadora estejam na mesma frequência de amostragem
+    # entretanto, os 44.1 kHz são inssuficientes para uma portadora com alta frequência
+    # Assim, usamos o resample para que a mensagem tenha amostras suficientes para a portadora que iremos usar.
+    mensagem, n_amostras = resample_audio(audio, fs, fs_simulacao)
+    return n_amostras, fs, mensagem
+
+
+def resample_audio(data, freq_original, nova_freq):
+    n_amostras = int(
+        len(data) * (nova_freq / freq_original)
+    )  # recalculando o número de amostras para fazer o resample
+    data_resampled = signal.resample(data, n_amostras)
+    return data_resampled, n_amostras
+
+
 def gerar_portadora(fc, fs_simulacao, n_amostras):
     n = np.arange(n_amostras)
     portadora = 1 * np.cos(
@@ -12,20 +34,6 @@ def gerar_portadora(fc, fs_simulacao, n_amostras):
     )  # Gera portadora cossenoidal.
 
     return portadora
-
-
-def calcular_espectro(sinal, fs):
-    n = len(sinal)
-    sinal_fft = np.fft.fftshift(np.fft.fft(sinal))
-    sinal_fft = np.abs(sinal_fft)
-    sinal_fft = sinal_fft / np.max(sinal_fft)
-
-    # Gera o vetor de frequências de -fs/2 até fs/2
-    f = np.fft.fftshift(np.fft.fftfreq(n, d=1 / fs))
-
-    mag = 20 * np.log10(np.abs(sinal_fft) / n + 1e-10)
-
-    return f, mag
 
 
 def modulacao(portadora, mensagem):
@@ -69,23 +77,6 @@ def filtro_fase_linear(signal, fs, fc, numtaps=101):
     return y
 
 
-def lowpass_filter(x, K):
-    # O filtro é implementado pela equação das diferenças calculado.
-    # Usamos os termos b0, b1 e a1, que dependem dos valores de capacitância e resistência.
-    # Consideramos que o estado inicial é de repouso, logo x[-1] e y[-1] são zero.
-
-    b0 = 1 / (1 + K)
-    b1 = 1 / (1 + K)
-    a1 = (1 - K) / (1 + K)
-
-    y = np.zeros(shape=x.shape)
-    y[0] = b0 * x[0]
-    for n in range(1, len(x)):
-        y[n] = b0 * x[n] + b1 * x[n - 1] - a1 * y[n - 1]
-
-    return y
-
-
 def removedor_DC(s_t):
     s_final = (
         s_t - np.mean(s_t)
@@ -94,68 +85,77 @@ def removedor_DC(s_t):
     return s_final
 
 
+def calcular_espectro(sinal, fs):
+    n = len(sinal)
+    sinal_fft = np.fft.fftshift(np.fft.fft(sinal))
+    # sinal_fft = np.abs(sinal_fft)
+    # sinal_fft = sinal_fft / np.max(sinal_fft)
+    mag_linear = (np.abs(sinal_fft) / n) * 2
+
+    # Gera o vetor de frequências de -fs/2 até fs/2
+    f = np.fft.fftshift(np.fft.fftfreq(n, d=1 / fs))
+
+    mag_db = 20 * np.log10(mag_linear + 1e-5)
+    return f, mag_db
+
+
 def gerar_graficos(mensagem, m_t, s_t, fs):
-    # --- Plotagem ---
+    # --- Plotando os gráficos do sinal no tempo ---
     fig, axs = plt.subplots(4, 1, figsize=(10, 10), sharex=True)
     plt.subplots_adjust(hspace=0.4)
 
     n = np.arange(len(mensagem))
-    # Gráfico 1: Audio original
 
+    # 1. Audio Original
     axs[0].plot(n, mensagem, color="blue")
-    axs[0].set_title("1. Audio Original")
+    axs[0].set_title("Audio Original")
     axs[0].set_ylim(-40000, 40000)
     axs[0].grid(True)
 
-    # Gráfico 2: Portadora
-
-    # Gráfico 3: Sinal Modulado
-
+    # 2. Sinal modulado
     axs[1].plot(n, m_t, color="orange")
-    axs[1].set_title("2. Sinal modulado")
-    # axs[1].set_ylim(-40000, 40000)
+    axs[1].set_title("Sinal modulado")
     axs[1].grid(True)
 
-    # Gráfico 3:
+    # 3. Sinal demodulado
     axs[2].plot(n, s_t, color="green")
-    axs[2].set_title("3. Sinal demodulado")
+    axs[2].set_title("Sinal demodulado")
     axs[2].set_ylim(-40000, 40000)
     axs[2].grid(True)
 
+    # 4. Diferença entre o sinal original, e o demodulado
     axs[3].plot(n, mensagem - s_t, color="orange")
-    axs[3].set_title("4. Diferença entre o sinal original, e o demodulado")
+    axs[3].set_title("Diferença entre o sinal original, e o demodulado")
     axs[3].set_ylim(-40000, 40000)
     axs[3].grid(True)
 
-    # plt.xlabel("Tempo (s)")
+    plt.xlabel("Tempo (s)")
     plt.show()
-    # implementar função do gráfico
-    #
+
+    # --- Plotando os espectros dos sinais ---
 
     fig, axs = plt.subplots(3, 1, figsize=(10, 10), sharex=True)
     plt.subplots_adjust(hspace=0.4)
 
+    # 1. Espectro do Audio Original
     f, mensagem_dfft = calcular_espectro(mensagem, fs)
     axs[0].plot(f, mensagem_dfft, color="blue")
-    axs[0].set_title("1. Espectro do Audio Original")
-    # axs[0].set_ylim(-40000, 40000)
+    axs[0].set_title("Espectro do Audio Original")
+    axs[0].set_xlim(-200000, 200000)
     axs[0].grid(True)
 
-    # Gráfico 2: Portadora
-
-    # Gráfico 3: Sinal Modulado
-
+    # 2. Espectro do Sinal modulado
     f, m_t_dfft = calcular_espectro(m_t, fs)
     axs[1].plot(f, m_t_dfft, color="orange")
-    axs[1].set_title("2. Espectro do Sinal modulado")
-    # axs[1].set_ylim(-40000, 40000)
+    axs[1].set_title("Espectro do Sinal modulado")
+    axs[1].set_xlim(-200000, 200000)
     axs[1].grid(True)
 
-    # Gráfico 3:
+    # 3. Espectro do Sinal demodulado
     f, s_t_dfft = calcular_espectro(s_t, fs)
     axs[2].plot(f, s_t_dfft, color="green")
-    axs[2].set_title("3. Espectro do Sinal demodulado")
-    # axs[2].set_ylim(-40000, 40000)
+    axs[2].set_title("Espectro do Sinal demodulado")
+    axs[2].set_xlim(-200000, 200000)
     axs[2].grid(True)
 
     plt.xlabel("Frequência (Hz)")
@@ -163,30 +163,6 @@ def gerar_graficos(mensagem, m_t, s_t, fs):
     plt.show()
 
     return
-
-
-def resample_audio(data, freq_original, nova_freq):
-    n_amostras = int(
-        len(data) * (nova_freq / freq_original)
-    )  # recalculando o número de amostras para fazer o resample
-    data_resampled = signal.resample(data, n_amostras)
-    return data_resampled, n_amostras
-
-
-def extrair_mensagem(arquivo, fs_simulacao):
-    fs, audio = wavfile.read(arquivo)  # abre o arquivo e o salva em formato uint16
-
-    # para simplificar, vamos usar o audio MONO
-    if (
-        audio.ndim > 1
-    ):  # se for stereo, converte para mono calculando a média entre os canais
-        audio = audio.mean(axis=1).astype(audio.dtype)
-
-    # é necessário que a mensagem e a portadora estejam na mesma frequência de amostragem
-    # entretanto, os 44.1 kHz são inssuficientes para uma portadora com alta frequência
-    # Assim, usamos o resample para que a mensagem tenha amostras suficientes para a portadora que iremos usar.
-    mensagem, n_amostras = resample_audio(audio, fs, fs_simulacao)
-    return n_amostras, fs, mensagem
 
 
 def salvar_audio(audio, fs_simulacao, fs):
@@ -206,14 +182,20 @@ if __name__ == "__main__":
     # queremos uma frequência de simulação alta o suficiente para "ver" a portadora.
     arquivo = "audio.wav"
 
+    # Passo 1: extrair o arquivo de audio
     n_amostras, fs_audio, mensagem = extrair_mensagem(arquivo, fs_simulacao)
 
+    # Passo 2: gerar uma portadora com o mesmo tamanho (n de amostras) do audio
     portadora = gerar_portadora(fc, fs_simulacao, n_amostras)
 
+    # Passo 3: modular via AM convencional
     mensagem_modulada = modulacao(portadora, mensagem)
 
+    # Passo 4: demodular o sinal modulado
     mensagem_demodulada = demodulacao(mensagem_modulada, fs_simulacao, f_corte)
 
+    # Passo 5: salvar o arquivo da mensagem demodulada
     salvar_audio(mensagem_demodulada, fs_simulacao, fs_audio)
 
+    # Passo 6: gerar os gráficos dos sinais, e os espectros
     gerar_graficos(mensagem, mensagem_modulada, mensagem_demodulada, fs_simulacao)
