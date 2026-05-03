@@ -2,33 +2,45 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
 from scipy import signal
-from filtro.py import filtro_fase_linear
+# from filtro.py import filtro_fase_linear
 
 
 def gerar_portadora(fc, fs_simulacao, n_amostras):
     n = np.arange(n_amostras)
-    portadora = np.cos(
+    portadora = 1 * np.cos(
         2 * np.pi * fc * (n / fs_simulacao)
     )  # Gera portadora cossenoidal.
 
     return portadora
 
 
+def calcular_espectro(sinal, fs):
+    n = len(sinal)
+    sinal_fft = np.fft.fftshift(np.fft.fft(sinal))
+    sinal_fft = np.abs(sinal_fft)
+    sinal_fft = sinal_fft / np.max(sinal_fft)
+
+    # Gera o vetor de frequências de -fs/2 até fs/2
+    f = np.fft.fftshift(np.fft.fftfreq(n, d=1 / fs))
+
+    mag = 20 * np.log10(np.abs(sinal_fft) / n + 1e-10)
+
+    return f, mag
+
+
 def modulacao(portadora, mensagem):
-    A = 33000  # Amplitude da portadora (DC Offset) com valor inteiro (porque a mensagem está em int16).
     # A mensagem varia de -32768 a 32767, então precisamos de uma portadora na mesma escala.
+    A = 33000  # Amplitude da portadora (DC Offset) com valor inteiro (porque a mensagem está em int16).
     mu = 0.8  # usando um coeficiente de submodulação (mu < 1)
+    # mu = 1.0  # usando um coeficiente de submodulação (mu < 1)
     m_t = (
         A + mu * mensagem
     ) * portadora  # Mixing da mensagem com a portadora, gerando o sinal modulado.
-    # TODO - alterar a documentação. Estamos usando uma modulação AM-convencional, não o DSB-SC (que exigiria demodulação coerente)
     return m_t
 
 
-# def demodulacao(m_t, K):
 def demodulacao(m_t, fs, f_corte=15000):
     s_t = retificacao(m_t)
-    # s_t = lowpass_filter(s_t, K)
     s_t = filtro_fase_linear(s_t, fs, f_corte, 301)
     s_t = removedor_DC(s_t)
 
@@ -36,18 +48,8 @@ def demodulacao(m_t, fs, f_corte=15000):
 
 
 def retificacao(r_t):
-    return np.abs(
-        r_t
-    )  # Retificação de onda completa, obtendo o valor absoluto do sinal modulado. É como se fosse uma ponte retificadora, ao invés de apenas um diodo.
-
-
-# def low-pass-filter(m_t_hat):
-#
-#     windows_size = 50 # O tamanho da janela define a "inércia" (como o RC do capacitor) do filtro de média móvel. Quanto maior a janela, mais suave será o sinal filtrado, mas também pode introduzir mais atraso e atenuação. O valor de 50 é um ponto de partida razoável para sinais de áudio, mas pode ser ajustado conforme necessário para obter um equilíbrio entre suavização e resposta rápida.
-#     kernel = np.ones(windows_size) / windows_size # Cria um kernel de média móvel, onde cada elemento é 1/windows_size. Isso significa que cada ponto do sinal filtrado será a média dos últimos "windows_size" pontos do sinal retificado.
-#     s_t = np.convolve(m_t_hat, kernel, mode="same") # Filtragem do sinal retificado usando uma média móvel (filtro FIR simples) para recuperar a mensagem original.
-#     return s_t
-#
+    # Retificação de onda completa, obtendo o valor absoluto do sinal modulado. É como se fosse uma ponte retificadora, ao invés de apenas um diodo.
+    return np.abs(r_t)
 
 
 def filtro_fase_linear(signal, fs, fc, numtaps=101):
@@ -92,7 +94,7 @@ def removedor_DC(s_t):
     return s_final
 
 
-def gerar_graficos(portadora, mensagem, m_t, s_t):
+def gerar_graficos(mensagem, m_t, s_t, fs):
     # --- Plotagem ---
     fig, axs = plt.subplots(4, 1, figsize=(10, 10), sharex=True)
     plt.subplots_adjust(hspace=0.4)
@@ -128,6 +130,37 @@ def gerar_graficos(portadora, mensagem, m_t, s_t):
     # plt.xlabel("Tempo (s)")
     plt.show()
     # implementar função do gráfico
+    #
+
+    fig, axs = plt.subplots(3, 1, figsize=(10, 10), sharex=True)
+    plt.subplots_adjust(hspace=0.4)
+
+    f, mensagem_dfft = calcular_espectro(mensagem, fs)
+    axs[0].plot(f, mensagem_dfft, color="blue")
+    axs[0].set_title("1. Espectro do Audio Original")
+    # axs[0].set_ylim(-40000, 40000)
+    axs[0].grid(True)
+
+    # Gráfico 2: Portadora
+
+    # Gráfico 3: Sinal Modulado
+
+    f, m_t_dfft = calcular_espectro(m_t, fs)
+    axs[1].plot(f, m_t_dfft, color="orange")
+    axs[1].set_title("2. Espectro do Sinal modulado")
+    # axs[1].set_ylim(-40000, 40000)
+    axs[1].grid(True)
+
+    # Gráfico 3:
+    f, s_t_dfft = calcular_espectro(s_t, fs)
+    axs[2].plot(f, s_t_dfft, color="green")
+    axs[2].set_title("3. Espectro do Sinal demodulado")
+    # axs[2].set_ylim(-40000, 40000)
+    axs[2].grid(True)
+
+    plt.xlabel("Frequência (Hz)")
+    plt.ylabel("Amplitude (dB)")
+    plt.show()
 
     return
 
@@ -161,7 +194,6 @@ def salvar_audio(audio, fs_simulacao, fs):
     audio_downsampled, _ = resample_audio(audio, fs_simulacao, fs)
     audio_processado = np.clip(audio_downsampled, -32768, 32767)
 
-    # 2. Converte explicitamente o tipo da matriz para int16
     audio = audio_processado.astype(np.int16)
     wavfile.write("audio_recebido.wav", fs, audio)
     return
@@ -178,19 +210,10 @@ if __name__ == "__main__":
 
     portadora = gerar_portadora(fc, fs_simulacao, n_amostras)
 
-    T = 1 / fs_simulacao
-    C = 4.7e-9  # 4.7nF
-    R = 2.26e3  # 2.26 kOhms
-    K = R * C / T
-
-    # Esses valores de capacitância, resistência resultam em um filtro
-    # com frequência de corte de aproximadamente 15 kHz
-
     mensagem_modulada = modulacao(portadora, mensagem)
 
-    # mensagem_demodulada = demodulacao(mensagem_modulada, K)
     mensagem_demodulada = demodulacao(mensagem_modulada, fs_simulacao, f_corte)
 
     salvar_audio(mensagem_demodulada, fs_simulacao, fs_audio)
 
-    gerar_graficos(portadora, mensagem, mensagem_modulada, mensagem_demodulada)
+    gerar_graficos(mensagem, mensagem_modulada, mensagem_demodulada, fs_simulacao)
