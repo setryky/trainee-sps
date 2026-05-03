@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
     # Plotando o filtro de fase linear
 
-    h_final = filtro_fase_linear(fs, fc, 1001)
+    h_final = filtro_fase_linear(fs, fc, 101)
     n = np.arange(len(h_final))
     plt.plot(n, h_final)
     plt.show()
