@@ -1,7 +1,9 @@
+#!/usr/bin/bash/env python3
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
 from scipy import signal
+
 # from filtro.py import filtro_fase_linear
 
 
@@ -78,8 +80,8 @@ def filtro_fase_linear(signal, fs, fc, numtaps=101):
 
 
 def removedor_DC(s_t):
-    s_final = (
-        s_t - np.mean(s_t)
+    s_final = s_t - np.mean(
+        s_t
     )  # Remoção do componente DC do sinal filtrado, centralizando o sinal em torno de zero.
     s_final = s_final * (np.pi / 2)  # Compensação teórica da retificação onda completa.
     return s_final
@@ -165,13 +167,13 @@ def gerar_graficos(mensagem, m_t, s_t, fs):
     return
 
 
-def salvar_audio(audio, fs_simulacao, fs):
+def salvar_audio(audio, fs_simulacao, fs, nome_arquivo="audio_demodulado.wav"):
     # primeiro, precisamos fazer um downsample para o audio tocar em 44.1kHz
     audio_downsampled, _ = resample_audio(audio, fs_simulacao, fs)
     audio_processado = np.clip(audio_downsampled, -32768, 32767)
 
     audio = audio_processado.astype(np.int16)
-    wavfile.write("audio_recebido.wav", fs, audio)
+    wavfile.write(nome_arquivo, fs, audio)
     return
 
 
